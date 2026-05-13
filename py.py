@@ -1,4 +1,5 @@
 import pygame
+import random
 
 pygame.init()
 
@@ -10,6 +11,10 @@ button_font = pygame.font.SysFont("segoeuiemoji", 40)
 
 game_state =  "title"
 selected_class = None
+
+enemy_waiting = False
+
+player_has_acted = False
 
 start_button = pygame.Rect(350, 300, 200, 60)
 
@@ -40,19 +45,51 @@ classes = [
     }
 ]
 
+class_attacks = {
+    
+    "Barbarian": [
+        {"name": "Slash", "damage": 10, "accuracy": 90, "crit_chance": 10},
+        {"name": "Slam", "damage": 18, "accuracy": 65, "crit_chance": 20},
+        {"name": "Pierce", "damage": 14, "accuracy": 80, "crit_chance": 15}
+    ],
+  
+    "Wizard": [
+        {"name": "Fireball", "damage": 12, "accuracy": 85, "crit_chance": 15},
+        {"name": "Shock", "damage": 9, "accuracy": 95, "crit_chance": 5},
+        {"name": "Ice Knife", "damage": 15, "accuracy": 75, "crit_chance": 20}
+    ],
+
+    "Druid": [
+        {"name": "Vine Whip", "damage": 11, "accuracy": 90, "crit_chance": 10},
+        {"name": "Nature Blast", "damage": 17, "accuracy": 70, "crit_chance": 20},
+        {"name": "Root Strike", "damage": 12, "accuracy": 85, "crit_chance": 10}
+    ],
+
+    "Ranger": [
+        {"name": "Arrow", "damage": 10, "accuracy": 95, "crit_chance": 10},
+        {"name": "Ice Arrow", "damage": 13, "accuracy": 85, "crit_chance": 15},
+        {"name": "Power Shot", "damage": 17, "accuracy": 65, "crit_chance": 25}
+    ]
+}
+
+enemy_attacks = [
+    {"name": "Claw", "damage": 8, "accuracy": 90, "crit_chance": 5},
+    {"name": "Bite", "damage": 12, "accuracy": 70, "crit_chance": 10},
+    {"name": "Stab", "damage": 22, "accuracy": 80, "crit_chance": 20}
+]
+
 player_max_hp = 100
 enemy_max_hp = 100
 
 enemy_name = "Goblin"
 enemy_hp = 100
 
-attack_button = pygame.Rect(320, 500, 260, 60)
-
 winner_text = ""
 
 current_turn = "player"
 
-battle_message = ""
+player_log = ""
+enemy_log = ""
 
 running = True
 while running:
@@ -104,9 +141,12 @@ while running:
                     rect.height + 20
                 )
                 colour = (110, 110, 110)
-
             else:
                 draw_rect = rect
+                
+            if current_turn != "player":
+                colour = (50, 50, 50)
+            else:
                 colour = (80, 80, 80)
 
             pygame.draw.rect(screen, colour, draw_rect, border_radius=20)
@@ -191,31 +231,46 @@ while running:
         
         screen.blit(enemy_hp_text, enemy_hp_rect)
 
-        # ATTACK BUTTON
+        current_attacks = class_attacks[selected_class]
 
-        attack_color = (80,80,80)
+        for i, attack in enumerate(current_attacks):
         
-        if attack_button.collidepoint(mouse_pos):
-            attack_color = (110,110,110)
+            attack_rect = pygame.Rect(
+                90 + (i * 260),
+                500,
+                220,
+                60
+            )
         
-        pygame.draw.rect(
-            screen,
-            attack_color,
-            attack_button,
-            border_radius=20
-        )
+            color = (80,80,80)
         
-        attack_text = button_font.render(
-            "Attack",
-            True,
-            (255,255,255)
-        )
+            if attack_rect.collidepoint(mouse_pos):
+                color = (110,110,110)
         
-        attack_text_rect = attack_text.get_rect(
-            center=attack_button.center
-        )
+            pygame.draw.rect(
+                screen,
+                color,
+                attack_rect,
+                border_radius=20
+            )
         
-        screen.blit(attack_text, attack_text_rect)
+            attack_text = button_font.render(
+                attack["name"],
+                True,
+                (255,255,255)
+            )
+        
+            attack_text_rect = attack_text.get_rect(
+                center=attack_rect.center
+            )
+        
+            screen.blit(attack_text, attack_text_rect)
+
+        player_log_text = button_font.render(player_log, True, (255, 255, 255))
+        enemy_log_text = button_font.render(enemy_log, True, (255, 255, 255))
+
+        screen.blit(player_log_text, (WIDTH//2 - player_log_text.get_width()//2, 380))
+        screen.blit(enemy_log_text, (WIDTH//2 - enemy_log_text.get_width()//2, 420))
 
         if winner_text != "":
 
@@ -232,7 +287,7 @@ while running:
             screen.blit(win_text, win_rect)
 
         message_text = button_font.render(
-            battle_message,
+            player_log,
             True,
             (255, 255, 255)
         )
@@ -243,13 +298,34 @@ while running:
 
         screen.blit(message_text, message_rect)
 
-        if current_turn == "enemy" and enemy_hp > 0:
-            pygame.display.flip()
-            pygame.time.delay(600)
-            player_hp -= 8
-            player_hp = max(0, player_hp)
-            battle_message = "Goblin Hits You"
-            current_turn = "player"
+        if enemy_waiting and current_turn == "enemy":
+            if pygame.time.get_ticks() - enemy_start_time > 600:
+
+                attack = random.choice(enemy_attacks)
+            
+                hit_roll = random.randint(1, 100)
+                
+                if hit_roll <= attack["accuracy"]:
+                
+                    damage = attack["damage"]
+                    
+                    crit_roll = random.randint(1, 100)
+                    
+                    if crit_roll <= attack["crit_chance"]:
+                        damage *= 2
+                        enemy_log = "Enemy CRIT With " + attack["name"]
+                    else:
+                        enemy_log = "Enemy Used " + attack["name"]
+        
+                    player_hp -= damage
+                    player_hp = max(0, player_hp)
+        
+                else:
+                    enemy_log = "Enemy Missed!"
+
+                enemy_waiting = False
+                current_turn = "player"
+                player_has_acted = False
 
     for event in pygame.event.get():
         
@@ -279,16 +355,68 @@ while running:
 
             if game_state == "battle":
 
-                if attack_button.collidepoint(event.pos):
+                if game_state == "battle" and current_turn == "player" and not player_has_acted:
+            
+                    current_attacks = class_attacks[selected_class]
+            
+                    for i, attack in enumerate(current_attacks):
+            
+                        attack_rect = pygame.Rect(
+                            90 + (i * 260),
+                            500,
+                            220,
+                            60
+                        )
+            
+                        if attack_rect.collidepoint(event.pos):
+            
+                            hit_roll = random.randint(1, 100)
 
-                    if current_turn == "player":
-                        enemy_hp -= 13
-                        enemy_hp = max(0, enemy_hp)
-                        battle_message = "You Hit Goblin"
-                        if enemy_hp == 0:
-                            winner_text = "You Win"
-                        else:
-                            current_turn = "enemy"
+                            if hit_roll <= attack["accuracy"]:
+                            
+                                damage = attack["damage"]
+                            
+                                crit_roll = random.randint(1, 100)
+                            
+                                if crit_roll <= attack["crit_chance"]:
+                            
+                                    damage *= 2
+                            
+                                    player_log = (
+                                        attack["name"] +
+                                        " CRIT for " +
+                                        str(damage)
+                                    )
+                            
+                                else:
+                            
+                                    player_log = (
+                                        attack["name"] +
+                                        " hit for " +
+                                        str(damage)
+                                    )
+                            
+                                enemy_hp -= damage
+                            
+                                enemy_hp = max(0, enemy_hp)
+                            
+                            else:
+                            
+                                battle_message = (
+                                    attack["name"] +
+                                    " MISSED!"
+                                )
+            
+                            if enemy_hp == 0:
+            
+                                winner_text = "You Win"
+            
+                            else:
+            
+                                player_has_acted = True
+                                current_turn = "enemy"
+                                enemy_waiting = True
+                                enemy_start_time = pygame.time.get_ticks()
     
     pygame.display.flip()
 
