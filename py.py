@@ -22,25 +22,25 @@ classes = [
     {
         "name": "Barbarian",
         "emoji": "[B]",
-        "hp": 140,
+        "hp": 170,
         "rect": pygame.Rect(170, 160, 220, 70)
     },
     {
         "name": "Wizard",
         "emoji": "[W]",
-        "hp": 80,
+        "hp": 115,
         "rect": pygame.Rect(510, 160, 220, 70)
     },
     {
         "name": "Druid",
         "emoji": "[D]",
-        "hp": 100,
+        "hp": 150,
         "rect": pygame.Rect(170, 340, 220, 70)
     },
     {
         "name": "Ranger",
         "emoji": "[R]",
-        "hp": 90,
+        "hp": 140,
         "rect": pygame.Rect(510, 340, 220, 70)
     }
 ]
@@ -48,34 +48,34 @@ classes = [
 class_attacks = {
     
     "Barbarian": [
-        {"name": "Slash", "damage": 10, "accuracy": 90, "crit_chance": 10},
-        {"name": "Slam", "damage": 18, "accuracy": 65, "crit_chance": 20},
-        {"name": "Pierce", "damage": 14, "accuracy": 80, "crit_chance": 15}
+        {"name": "Slash", "dice_count": 5, "dice_size": 6, "accuracy": 90, "crit_chance": 10},
+        {"name": "Slam", "dice_count": 4, "dice_size": 12, "accuracy": 65, "crit_chance": 20},
+        {"name": "Pierce", "dice_count": 3, "dice_size": 10, "accuracy": 80, "crit_chance": 15}
     ],
   
     "Wizard": [
-        {"name": "Fireball", "damage": 12, "accuracy": 85, "crit_chance": 15},
-        {"name": "Shock", "damage": 9, "accuracy": 95, "crit_chance": 5},
-        {"name": "Ice Knife", "damage": 15, "accuracy": 75, "crit_chance": 20}
+        {"name": "Fireball", "dice_count": 9, "dice_size": 6, "accuracy": 85, "crit_chance": 15},
+        {"name": "Shock", "dice_count": 3, "dice_size": 8, "accuracy": 95, "crit_chance": 5},
+        {"name": "Ice Knife", "dice_count": 6, "dice_size": 6, "accuracy": 75, "crit_chance": 20}
     ],
 
     "Druid": [
-        {"name": "Vine Whip", "damage": 11, "accuracy": 90, "crit_chance": 10},
-        {"name": "Nature Blast", "damage": 17, "accuracy": 70, "crit_chance": 20},
-        {"name": "Root Strike", "damage": 12, "accuracy": 85, "crit_chance": 10}
+        {"name": "Vine Whip", "dice_count": 2, "dice_size": 10, "accuracy": 90, "crit_chance": 10},
+        {"name": "Eldritch Blast", "dice_count": 4, "dice_size": 10, "accuracy": 70, "crit_chance": 20},
+        {"name": "Root Strike", "dice_count": 6, "dice_size": 4, "accuracy": 85, "crit_chance": 10}
     ],
 
     "Ranger": [
-        {"name": "Arrow", "damage": 10, "accuracy": 95, "crit_chance": 10},
-        {"name": "Ice Arrow", "damage": 13, "accuracy": 85, "crit_chance": 15},
-        {"name": "Power Shot", "damage": 17, "accuracy": 65, "crit_chance": 25}
+        {"name": "Arrow", "dice_count": 4, "dice_size": 8, "accuracy": 95, "crit_chance": 10},
+        {"name": "Ice Arrow", "dice_count": 5, "dice_size": 8, "accuracy": 85, "crit_chance": 15},
+        {"name": "Power Shot", "dice_count": 6, "dice_size": 8, "accuracy": 65, "crit_chance": 25}
     ]
 }
 
 enemy_attacks = [
-    {"name": "Claw", "damage": 8, "accuracy": 90, "crit_chance": 5},
-    {"name": "Bite", "damage": 12, "accuracy": 70, "crit_chance": 10},
-    {"name": "Stab", "damage": 22, "accuracy": 80, "crit_chance": 20}
+    {"name": "Claw", "dice_count": 3, "dice_size": 12, "accuracy": 90, "crit_chance": 5},
+    {"name": "Bite", "dice_count": 4, "dice_size": 10, "accuracy": 70, "crit_chance": 10},
+    {"name": "Stab", "dice_count": 5, "dice_size": 12, "accuracy": 80, "crit_chance": 20}
 ]
 
 player_max_hp = 100
@@ -269,8 +269,8 @@ while running:
         player_log_text = button_font.render(player_log, True, (255, 255, 255))
         enemy_log_text = button_font.render(enemy_log, True, (255, 255, 255))
 
-        screen.blit(player_log_text, (WIDTH//2 - player_log_text.get_width()//2, 380))
-        screen.blit(enemy_log_text, (WIDTH//2 - enemy_log_text.get_width()//2, 420))
+        screen.blit(player_log_text, (WIDTH//2 - player_log_text.get_width()//2, 420))
+        screen.blit(enemy_log_text, (WIDTH//2 - enemy_log_text.get_width()//2, 460))
 
         if winner_text != "":
 
@@ -286,18 +286,6 @@ while running:
 
             screen.blit(win_text, win_rect)
 
-        message_text = button_font.render(
-            player_log,
-            True,
-            (255, 255, 255)
-        )
-
-        message_rect = message_text.get_rect(
-            center=(WIDTH // 2, 440)
-        )
-
-        screen.blit(message_text, message_rect)
-
         if enemy_waiting and current_turn == "enemy":
             if pygame.time.get_ticks() - enemy_start_time > 600:
 
@@ -307,15 +295,18 @@ while running:
                 
                 if hit_roll <= attack["accuracy"]:
                 
-                    damage = attack["damage"]
+                    damage = 0
+
+                    for _ in range(attack["dice_count"]):
+                        damage += random.randint(1, attack["dice_size"])
                     
                     crit_roll = random.randint(1, 100)
                     
                     if crit_roll <= attack["crit_chance"]:
                         damage *= 2
-                        enemy_log = "Enemy CRIT With " + attack["name"]
+                        enemy_log = attack["name"] + " CRIT for " + str(damage)
                     else:
-                        enemy_log = "Enemy Used " + attack["name"]
+                        enemy_log = attack["name"] + " HIT for " + str(damage)
         
                     player_hp -= damage
                     player_hp = max(0, player_hp)
@@ -369,12 +360,18 @@ while running:
                         )
             
                         if attack_rect.collidepoint(event.pos):
+
+                            player_log = ""
+                            enemy_log = ""
             
                             hit_roll = random.randint(1, 100)
 
                             if hit_roll <= attack["accuracy"]:
                             
-                                damage = attack["damage"]
+                                damage = 0
+
+                                for _ in range(attack["dice_count"]):
+                                    damage += random.randint(1, attack["dice_size"])
                             
                                 crit_roll = random.randint(1, 100)
                             
@@ -392,7 +389,7 @@ while running:
                             
                                     player_log = (
                                         attack["name"] +
-                                        " hit for " +
+                                        " HIT for " +
                                         str(damage)
                                     )
                             
@@ -402,7 +399,7 @@ while running:
                             
                             else:
                             
-                                battle_message = (
+                                player_log = (
                                     attack["name"] +
                                     " MISSED!"
                                 )
